@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8"/>
+  <title>Export Frames by Section</title>
+  <style>
+    body { font-family: Inter, system-ui, sans-serif; padding:12px; }
+    label { display:block; margin-top:8px; }
+    .row { display:flex; gap:8px; align-items:center; }
+    .actions { margin-top:12px; }
+    button { padding:8px 12px; border-radius:6px; border:1px solid #ddd; background:#1e88e5; color:white; cursor:pointer; }
+  </style>
+</head>
+<body>
+  <h3>Export Frames by Section</h3>
+
+  <label>Format</label>
+  <select id="format">
+    <option>PNG</option>
+    <option>JPG</option>
+    <option>SVG</option>
+    <option>PDF</option>
+  </select>
+
+  <label>Scale</label>
+  <select id="scale">
+    <option value="1">1x</option>
+    <option value="2">2x</option>
+    <option value="3">3x</option>
+    <option value="4">4x</option>
+  </select>
+
+  <label>Scope</label>
+  <select id="scope">
+    <option value="allSections">All Sections (current page)</option>
+    <option value="currentPage">Current Page</option>
+    <option value="selectedSections">Selected Sections</option>
+  </select>
+
+  <label>Filter by Background Color (Hex)</label>
+  <input type="text" id="bgColor" placeholder="#FFFFFF" style="width:100px"/>
+
+  <label class="row">
+    <input type="checkbox" id="zip" checked /> Create ZIP with folders per section
+  </label>
+
+  <div class="actions">
+    <button id="exportBtn">Export</button>
+  </div>
+
+  <div id="status"></div>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.0/jszip.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
+
+  <script>
+    const status = document.getElementById('status');
+
+    document.getElementById('exportBtn').onclick = () => {
+      const opts = {
+        format: document.getElementById('format').value,
+        scale: parseInt(document.getElementById('scale').value, 10),
+        scope: document.getElementById('scope').value,
+        zip: document.getElementById('zip').checked,
+        bgColor: document.getElementById('bgColor').value.trim().toLowerCase()
+      };
+      status.innerText = 'Requesting export...';
+      parent.postMessage({ pluginMessage: { type: 'export', opts } }, '*');
+    };
+
+    onmessage = (e) => {
+      const msg = e.data.pluginMessage || e.data;
+      if (msg.type === 'exports-ready') {
+        const files = msg.files;
+        if (files.length === 0) {
+          status.innerText = 'No frames found to export.';
+          return;
+        }
+        if (document.getElementById('zip').checked) {
+          const zip = new JSZip();
+          files.forEach(f => {
+            const arr = new Uint8Array(f.data);
+            const blob = new Blob([arr.buffer]);
+            zip.file(`${f.sectionName}/${f.frameName}.${f.ext}`, blob);
+          });
+          status.innerText = 'Building zip...';
+          zip.generateAsync({ type: 'blob' }).then(content => {
+            saveAs(content, 'figma-exports.zip');
+            status.innerText = 'Download started.';
+          });
+        } else {
+          files.forEach(f => {
+            const arr = new Uint8Array(f.data);
+            saveAs(new Blob([arr.buffer]), `${f.sectionName}-${f.frameName}.${f.ext}`);
+          });
+          status.innerText = `Downloaded ${files.length} files.`;
+        }
+      }
+    };
+  </script>
+</body>
+</html>

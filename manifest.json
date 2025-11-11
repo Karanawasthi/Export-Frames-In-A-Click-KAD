@@ -1,0 +1,11 @@
+{
+  "name": "Export Frames by Section",
+  "id": "1559839081755008974",
+  "api": "1.0.0",
+  "main": "code.js",
+  "ui": "ui.html",
+"documentAccess": "dynamic-page",
+  "editorType": ["figma"],
+  "permissions": ["currentuser"],
+  "enableProposedApi": false
+}
